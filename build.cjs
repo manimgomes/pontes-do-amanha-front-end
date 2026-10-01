@@ -1,0 +1,10 @@
+const fs=require('node:fs');const path=require('node:path');const {minify}=require('terser');
+(async()=>{const root=__dirname;const out=path.join(root,'docs');fs.mkdirSync(path.join(out,'assets'),{recursive:true});
+const css=['tokens.css','base.css','layout.css','components.css'].map(n=>fs.readFileSync(path.join(root,'css',n),'utf8')).join('\n');
+const cssMin=css.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\s+/g,' ').replace(/\s*([{}:;,>])\s*/g,'$1').trim();fs.writeFileSync(path.join(out,'assets/app.min.css'),cssMin);
+const files=['modules/masks.js','modules/storage.js','modules/templates.js','modules/navigation.js','modules/forms.js','main.js'];
+let js=files.map(n=>fs.readFileSync(path.join(root,'js',n),'utf8').replace(/^import[^;]+;\s*/gm,'').replace(/export /g,'')).join('\n');js=js.replaceAll('../imagens/','assets/');
+const result=await minify(js,{module:true,compress:true,mangle:true,format:{comments:false}});if(!result.code)throw Error('Minificação vazia');fs.writeFileSync(path.join(out,'assets/app.min.js'),result.code);
+let html=fs.readFileSync(path.join(root,'html/index.html'),'utf8').replace('../css/styles.css','assets/app.min.css').replace('../js/main.js','assets/app.min.js');html=html.replace(/>\s+</g,'><');fs.writeFileSync(path.join(out,'index.html'),html);fs.writeFileSync(path.join(out,'.nojekyll'),'');
+for(const nome of ['comunidade.svg','comunidade.webp','comunidade.png','comunidade.jpg'])fs.copyFileSync(path.join(root,'imagens',nome),path.join(out,'assets',nome));
+const medidas={css:{antes:Buffer.byteLength(css),depois:Buffer.byteLength(cssMin)},js:{antes:Buffer.byteLength(js),depois:Buffer.byteLength(result.code)}};fs.writeFileSync(path.join(root,'BUILD.json'),JSON.stringify(medidas,null,2));console.log(JSON.stringify(medidas));})();
